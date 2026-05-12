@@ -179,12 +179,30 @@ document.addEventListener("DOMContentLoaded", async () => {
 			const errorSpan = document.getElementById(`error-${e.target.id}`);
 			if (errorSpan) errorSpan.classList.remove("show");
 		}
+        
+		// Cross-field error clearing for dates
+		if (e.target.id === "leaveStartDate") {
+			const endEl = document.getElementById("leaveEndDate");
+			if (endEl && endEl.classList.contains("error-border")) {
+				endEl.classList.remove("error-border");
+				const errSpan = document.getElementById("error-leaveEndDate");
+				if (errSpan) errSpan.classList.remove("show");
+			}
+		}
+		if (e.target.id === "subStartDate") {
+			const endEl = document.getElementById("subEndDate");
+			if (endEl && endEl.classList.contains("error-border")) {
+				endEl.classList.remove("error-border");
+				const errSpan = document.getElementById("error-subEndDate");
+				if (errSpan) errSpan.classList.remove("show");
+			}
+		}
 	});
 
 	whatsappForm.addEventListener("submit", (e) => {
 		e.preventDefault(); // Prevent standard form submission
 
-		let message = "مرحباً، لدي طلب جديد من خلال الموقع:\n\n";
+		let message = "تقديم إجازة:\n\n";
 		let isValid = true;
 		let firstInvalidElement = null;
 
@@ -236,6 +254,37 @@ document.addEventListener("DOMContentLoaded", async () => {
 						const errorSpan = document.getElementById(`error-${field.id}`);
 						if (errorSpan) {
 							errorSpan.textContent = "الرقم المدني غير صحيح";
+							errorSpan.classList.add("show");
+						}
+						if (!firstInvalidElement) firstInvalidElement = element;
+						isValid = false;
+					} else {
+						element.classList.remove("error-border");
+						const errorSpan = document.getElementById(`error-${field.id}`);
+						if (errorSpan) errorSpan.classList.remove("show");
+						message += `*${field.label}:* ${val}\n`;
+					}
+				} else if (
+					val &&
+					val.trim() !== "" &&
+					(field.id === "leaveEndDate" || field.id === "subEndDate")
+				) {
+					const startDateId = field.id === "leaveEndDate" ? "leaveStartDate" : "subStartDate";
+					const startDateElement = document.getElementById(startDateId);
+					const startDateVal = startDateElement ? startDateElement.value : "";
+					let isDateValid = true;
+
+					if (startDateVal && startDateVal.trim() !== "") {
+						const startD = new Date(startDateVal);
+						const endD = new Date(val);
+						if (endD < startD) isDateValid = false;
+					}
+
+					if (!isDateValid) {
+						element.classList.add("error-border");
+						const errorSpan = document.getElementById(`error-${field.id}`);
+						if (errorSpan) {
+							errorSpan.textContent = "تاريخ النهاية يجب أن يكون بعد البداية";
 							errorSpan.classList.add("show");
 						}
 						if (!firstInvalidElement) firstInvalidElement = element;

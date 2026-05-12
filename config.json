@@ -183,7 +183,7 @@
 		{
 			"type": "number",
 			"id": "subAssignmentDuration",
-			"label": "مدة التكليف (بالأيام)",
+			"label": "مدة التكليف",
 			"required": true,
 			"halfWidth": true
 		},
