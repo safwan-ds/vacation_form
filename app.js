@@ -1,14 +1,11 @@
 document.addEventListener("DOMContentLoaded", async () => {
-	// 1. Theme Toggling Logic
 	const themeToggleBtn = document.getElementById("theme-toggle");
 	const themeIcon = themeToggleBtn.querySelector("i");
 	const htmlElement = document.documentElement;
 
-	// Check system preference and local storage
 	const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
 	const savedTheme = localStorage.getItem("theme");
 
-	// Set initial theme
 	if (savedTheme) {
 		setTheme(savedTheme);
 	} else if (prefersDark) {
@@ -36,7 +33,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 		setTheme(newTheme);
 	});
 
-	// 2. Load Configuration
 	let config = { whatsappNumber: "", fields: [] };
 	try {
 		const response = await fetch("config.json");
@@ -50,14 +46,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 			"Error fetching config.json (might be CORS if running via file://)",
 			e,
 		);
-		alert(
-			"حدث خطأ أثناء تحميل الإعدادات. الرجاء التأكد من تشغيل الموقع عبر خادم محلي (Local Server).",
-		);
-		return; // Stop execution if config can't be loaded
+		return;
 	}
 	const formConfig = config.fields;
 
-	// 3. Form Generation Logic
 	const formContainer = document.getElementById("form-fields-container");
 
 	formConfig.forEach((field) => {
@@ -77,7 +69,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 			groupDiv.classList.add("full-width");
 		}
 
-		// Handle Checkbox
 		if (field.type === "checkbox") {
 			groupDiv.classList.add("checkbox-group");
 
@@ -94,7 +85,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 			groupDiv.appendChild(input);
 			groupDiv.appendChild(label);
 		} else {
-			// Handle other fields (text, select, textarea)
 			const label = document.createElement("label");
 			label.htmlFor = field.id;
 			label.textContent = field.label;
@@ -129,7 +119,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 				groupDiv.appendChild(textarea);
 			} else if (field.type === "date") {
 				const input = document.createElement("input");
-				input.type = "text"; // Start as text to hide placeholder
+				input.type = "text";
 				input.id = field.id;
 				input.name = field.id;
 				input.className = "form-control";
@@ -156,7 +146,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 			}
 		}
 
-		// Add error message span for required fields
 		if (field.required) {
 			const errorSpan = document.createElement("span");
 			errorSpan.className = "error-text";
@@ -168,19 +157,16 @@ document.addEventListener("DOMContentLoaded", async () => {
 		formContainer.appendChild(groupDiv);
 	});
 
-	// 4. WhatsApp Redirection Logic
 	const whatsappForm = document.getElementById("whatsapp-form");
 	const WHATSAPP_NUMBER = config.whatsappNumber;
 
-	// Clear errors on input
 	whatsappForm.addEventListener("input", (e) => {
 		if (e.target.classList.contains("error-border")) {
 			e.target.classList.remove("error-border");
 			const errorSpan = document.getElementById(`error-${e.target.id}`);
 			if (errorSpan) errorSpan.classList.remove("show");
 		}
-        
-		// Cross-field error clearing for dates
+
 		if (e.target.id === "leaveStartDate") {
 			const endEl = document.getElementById("leaveEndDate");
 			if (endEl && endEl.classList.contains("error-border")) {
@@ -200,13 +186,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 	});
 
 	whatsappForm.addEventListener("submit", (e) => {
-		e.preventDefault(); // Prevent standard form submission
+		e.preventDefault();
 
 		let message = "تقديم إجازة:\n\n";
 		let isValid = true;
 		let firstInvalidElement = null;
 
-		// Extract values based on configuration
 		for (const field of formConfig) {
 			if (field.type === "section") {
 				message += `\n*=== ${field.label} ===*\n`;
@@ -222,7 +207,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 					val = element.value;
 				}
 
-				// Manual Validation
 				if (field.required && (!val || val.trim() === "")) {
 					element.classList.add("error-border");
 					const errorSpan = document.getElementById(`error-${field.id}`);
@@ -269,7 +253,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 					val.trim() !== "" &&
 					(field.id === "leaveEndDate" || field.id === "subEndDate")
 				) {
-					const startDateId = field.id === "leaveEndDate" ? "leaveStartDate" : "subStartDate";
+					const startDateId =
+						field.id === "leaveEndDate" ? "leaveStartDate" : "subStartDate";
 					const startDateElement = document.getElementById(startDateId);
 					const startDateVal = startDateElement ? startDateElement.value : "";
 					let isDateValid = true;
@@ -300,7 +285,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 					const errorSpan = document.getElementById(`error-${field.id}`);
 					if (errorSpan) errorSpan.classList.remove("show");
 
-					// Only add to message if there is a value or it's a checkbox
 					if ((val && val.trim() !== "") || field.type === "checkbox") {
 						message += `*${field.label}:* ${val}\n`;
 					}
@@ -313,7 +297,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 			return;
 		}
 
-		// Encode and Redirect
 		const encodedMessage = encodeURIComponent(message);
 		const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodedMessage}`;
 

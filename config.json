@@ -20,7 +20,6 @@
 			"type": "text",
 			"id": "fullName",
 			"label": "الاسم الثلاثي",
-			"placeholder": "أدخل اسمك الثلاثي...",
 			"required": true
 		},
 		{
