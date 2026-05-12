@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تقديم إجازة</title>
+
+    <!-- Google Fonts: Cairo -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <header class="app-header">
+            <div class="header-content">
+                <h1>تقديم طلب إجازة</h1>
+                <p>يرجى تعبئة النموذج أدناه وسيتم إرساله إلى واتساب </p>
+            </div>
+            <button id="theme-toggle" class="theme-toggle" aria-label="تغيير المظهر">
+                <i class="ph ph-moon"></i>
+            </button>
+        </header>
+
+        <main class="form-wrapper">
+            <form id="whatsapp-form" class="dynamic-form" novalidate>
+                <div id="form-fields-container"></div>
+
+                <button type="submit" class="submit-btn">
+                    <i class="ph ph-whatsapp-logo"></i>
+                    <span>إرسال عبر واتساب</span>
+                </button>
+            </form>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
