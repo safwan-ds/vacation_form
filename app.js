@@ -206,6 +206,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 					val = element.checked ? "نعم" : "لا";
 				} else {
 					val = element.value;
+					// Strip commas, decimal points and non-digit chars from number/tel fields
+					if (
+						(field.type === "number" || field.type === "tel") &&
+						val
+					) {
+						val = val.replace(/[^0-9]/g, "");
+					}
 				}
 
 				if (field.required && (!val || val.trim() === "")) {

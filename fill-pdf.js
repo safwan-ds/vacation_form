@@ -264,160 +264,133 @@ document.addEventListener("DOMContentLoaded", () => {
 			const { PDFDocument, PDFName, PDFBool, PDFString, PDFHexString } =
 				PDFLib;
 			const pdfDoc = await PDFDocument.load(pdfBytes);
+
+			// Register fontkit and embed an Arabic font for proper rendering
+			pdfDoc.registerFontkit(fontkit);
+			const fontBytes = await fetch("cairo-regular.ttf").then((res) =>
+				res.arrayBuffer(),
+			);
+			const arabicFont = await pdfDoc.embedFont(fontBytes, {
+				subset: false,
+			});
+
 			const form = pdfDoc.getForm();
 
-			// Set NeedAppearances flag so the PDF viewer renders
-			// field values using the PDF's own embedded Arabic fonts,
-			// instead of pdf-lib trying to render with WinAnsi Helvetica.
-			form.acroForm.dict.set(
-				PDFName.of("NeedAppearances"),
-				PDFBool.True,
-			);
+			// Known numeric field IDs (should contain only digits)
+			const numericFields = new Set([
+				"civilId",
+				"fileNumber",
+				"phoneNumber",
+				"leaveDuration",
+				"subCivilId",
+				"subPhoneNumber",
+				"subAssignmentDuration",
+			]);
 
-			// Helper: Set a text field value directly on the PDF dictionary,
-			// bypassing pdf-lib's setText() which triggers updateWidgetAppearance
-			// and fails on Arabic characters (WinAnsi encoding error).
-			function setTextFieldRaw(fieldName, textValue) {
-				try {
-					const field = form.getTextField(fieldName);
-					if (field) {
-						// Set /V (value) directly using PDFHexString for Unicode support
-						field.acroField.dict.set(
-							PDFName.of("V"),
-							PDFHexString.fromText(textValue),
-						);
-						// Remove existing appearance streams so the viewer regenerates them
-						const widgets = field.acroField.getWidgets();
-						for (const widget of widgets) {
-							widget.dict.delete(PDFName.of("AP"));
-						}
-					}
-				} catch (err) {
-					console.warn(
-						`Could not set text field "${fieldName}":`,
-						err,
-					);
+			// Fill each field
+			for (const [fieldId, rawValue] of Object.entries(parsedData)) {
+				const mapping = pdfFieldMap[fieldId];
+				if (!mapping) continue;
+
+				// Ensure value is always a plain string
+				let value = String(rawValue);
+
+				// For numeric fields, strip commas, decimals, and non-digit characters
+				if (numericFields.has(fieldId)) {
+					value = value.replace(/[^0-9]/g, "");
 				}
-			}
 
-			// Helper: Set a dropdown value directly on the PDF dictionary
-			function setDropdownField(fieldName, textValue) {
 				try {
-					const field = form.getDropdown(fieldName);
-					if (field) {
-						// Find the matching option (handling whitespace differences)
-						const options = field.getOptions();
-						let matchedValue = textValue;
-						const exactMatch = options.find(
-							(opt) => opt === textValue,
-						);
-						if (!exactMatch) {
-							const fuzzyMatch = options.find(
-								(opt) =>
-									opt.trim() === textValue.trim() ||
-									opt.includes(textValue) ||
-									textValue.includes(opt),
+					if (mapping.type === "text") {
+						const field = form.getTextField(mapping.pdfName);
+						if (field) {
+							// Remove number formatting scripts (AFNumber_Format)
+							field.acroField.dict.delete(PDFName.of("AA"));
+							const widgets = field.acroField.getWidgets();
+							for (const widget of widgets) {
+								widget.dict.delete(PDFName.of("AA"));
+							}
+							// Set value and render with Arabic font
+							field.setText(value);
+							field.updateAppearances(arabicFont);
+						}
+					} else if (mapping.type === "dropdown") {
+						const field = form.getDropdown(mapping.pdfName);
+						if (field) {
+							// Find matching option (handle whitespace differences)
+							const options = field.getOptions();
+							let matchedValue = value;
+							const exactMatch = options.find(
+								(opt) => opt === value,
 							);
-							if (fuzzyMatch) matchedValue = fuzzyMatch;
-						}
-
-						// Set /V directly using PDFHexString to avoid WinAnsi encoding errors
-						field.acroField.dict.set(
-							PDFName.of("V"),
-							PDFHexString.fromText(matchedValue),
-						);
-						// Remove appearance streams so viewer regenerates
-						const widgets = field.acroField.getWidgets();
-						for (const widget of widgets) {
-							widget.dict.delete(PDFName.of("AP"));
-						}
-					}
-				} catch (err) {
-					console.warn(
-						`Could not set dropdown "${fieldName}":`,
-						err,
-					);
-				}
-			}
-
-			// Helper: Set radio/checkbox value directly on the PDF dictionary
-			function setRadioField(fieldName, textValue) {
-				try {
-					// Find the field in the form's fields array
-					const fields = form.getFields();
-					const field = fields.find(
-						(f) => f.getName() === fieldName,
-					);
-					if (!field) return;
-
-					const isYes = textValue === "نعم";
-					const selectedValue = isYes ? "Yes" : "no";
-
-					// Set the /V value on the field dictionary
-					field.acroField.dict.set(
-						PDFName.of("V"),
-						PDFName.of(selectedValue),
-					);
-
-					// Update each widget's /AS (appearance state)
-					const widgets = field.acroField.getWidgets();
-					for (const widget of widgets) {
-						// Check what appearance names this widget has
-						const ap = widget.dict.get(PDFName.of("AP"));
-						if (ap) {
-							const normal = ap.get(PDFName.of("N"));
-							if (normal) {
-								const normalObj =
-									normal instanceof PDFLib.PDFRef
-										? pdfDoc.context.lookup(normal)
-										: normal;
-								const keys = normalObj.keys
-									? normalObj.keys()
-									: [];
-								const hasSelectedValue = keys.some(
-									(k) => k.toString() === `/${selectedValue}`,
+							if (!exactMatch) {
+								const fuzzyMatch = options.find(
+									(opt) =>
+										opt.trim() === value.trim() ||
+										opt.includes(value) ||
+										value.includes(opt),
 								);
-								if (hasSelectedValue) {
-									widget.dict.set(
-										PDFName.of("AS"),
-										PDFName.of(selectedValue),
-									);
-								} else {
-									widget.dict.set(
-										PDFName.of("AS"),
-										PDFName.of("Off"),
-									);
+								if (fuzzyMatch) matchedValue = fuzzyMatch;
+							}
+							field.select(matchedValue);
+							field.updateAppearances(arabicFont);
+						}
+					} else if (mapping.type === "radio") {
+						// Radio: set /V and /AS directly (keeps existing AP streams for flatten)
+						const fields = form.getFields();
+						const field = fields.find(
+							(f) => f.getName() === mapping.pdfName,
+						);
+						if (field) {
+							const isYes = value === "نعم";
+							const selectedValue = isYes ? "Yes" : "no";
+							field.acroField.dict.set(
+								PDFName.of("V"),
+								PDFName.of(selectedValue),
+							);
+							const widgets = field.acroField.getWidgets();
+							for (const widget of widgets) {
+								const ap = widget.dict.get(PDFName.of("AP"));
+								if (ap) {
+									const normal = ap.get(PDFName.of("N"));
+									if (normal) {
+										const normalObj =
+											normal instanceof PDFLib.PDFRef
+												? pdfDoc.context.lookup(normal)
+												: normal;
+										const keys = normalObj.keys
+											? normalObj.keys()
+											: [];
+										const hasSelected = keys.some(
+											(k) =>
+												k.toString() ===
+												`/${selectedValue}`,
+										);
+										widget.dict.set(
+											PDFName.of("AS"),
+											PDFName.of(
+												hasSelected
+													? selectedValue
+													: "Off",
+											),
+										);
+									}
 								}
 							}
 						}
 					}
-				} catch (err) {
+				} catch (fieldErr) {
 					console.warn(
-						`Could not set radio/checkbox "${fieldName}":`,
-						err,
+						`Could not fill field "${mapping.pdfName}" for "${fieldId}":`,
+						fieldErr,
 					);
 				}
 			}
 
-			// Fill each field
-			for (const [fieldId, value] of Object.entries(parsedData)) {
-				const mapping = pdfFieldMap[fieldId];
-				if (!mapping) continue;
+			// Flatten the form: stamps field values as static content and removes all fields
+			form.flatten();
 
-				if (mapping.type === "text") {
-					setTextFieldRaw(mapping.pdfName, value);
-				} else if (mapping.type === "dropdown") {
-					setDropdownField(mapping.pdfName, value);
-				} else if (mapping.type === "radio") {
-					setRadioField(mapping.pdfName, value);
-				}
-			}
-
-			// Save WITHOUT updating field appearances (to avoid Arabic encoding errors).
-			// The NeedAppearances flag tells the PDF viewer to render the values itself.
-			const filledPdfBytes = await pdfDoc.save({
-				updateFieldAppearances: false,
-			});
+			const filledPdfBytes = await pdfDoc.save();
 			const blob = new Blob([filledPdfBytes], { type: "application/pdf" });
 			const url = URL.createObjectURL(blob);
 
