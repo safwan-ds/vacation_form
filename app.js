@@ -188,13 +188,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 	whatsappForm.addEventListener("submit", (e) => {
 		e.preventDefault();
 
-		let message = "تقديم إجازة:\n\n";
+		const formData = {};
 		let isValid = true;
 		let firstInvalidElement = null;
+		let currentSection = "";
 
 		for (const field of formConfig) {
 			if (field.type === "section") {
-				message += `\n*=== ${field.label} ===*\n`;
+				currentSection = field.label;
 				continue;
 			}
 
@@ -246,7 +247,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 						element.classList.remove("error-border");
 						const errorSpan = document.getElementById(`error-${field.id}`);
 						if (errorSpan) errorSpan.classList.remove("show");
-						message += `*${field.label}:* ${val}\n`;
+						formData[field.id] = val;
 					}
 				} else if (
 					val &&
@@ -278,7 +279,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 						element.classList.remove("error-border");
 						const errorSpan = document.getElementById(`error-${field.id}`);
 						if (errorSpan) errorSpan.classList.remove("show");
-						message += `*${field.label}:* ${val}\n`;
+						formData[field.id] = val;
 					}
 				} else {
 					element.classList.remove("error-border");
@@ -286,7 +287,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 					if (errorSpan) errorSpan.classList.remove("show");
 
 					if ((val && val.trim() !== "") || field.type === "checkbox") {
-						message += `*${field.label}:* ${val}\n`;
+						formData[field.id] = val;
 					}
 				}
 			}
@@ -297,9 +298,60 @@ document.addEventListener("DOMContentLoaded", async () => {
 			return;
 		}
 
-		const encodedMessage = encodeURIComponent(message);
+		const jsonString = JSON.stringify(formData, null, 2);
+		const encodedMessage = encodeURIComponent(jsonString);
 		const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodedMessage}`;
 
 		window.open(whatsappUrl, "_blank");
 	});
+
+	// 5. Auto-Fill Test Data (For test.html)
+	const testFillBtn = document.getElementById("test-fill-btn");
+	if (testFillBtn) {
+		testFillBtn.addEventListener("click", () => {
+			const testData = {
+				breakType: "دورية",
+				fullName: "أحمد محمد عبدالله",
+				civilId: "290010101233", // Valid Kuwaiti Civil ID Checksum
+				mosqueName: "مسجد الصحابة",
+				jobTitle: "إمام وخطيب",
+				nationality: "كويتي",
+				phoneNumber: "90001234",
+				fileNumber: "12345",
+				fileContract: "إيرادات متفرغ",
+				leaveDuration: "5",
+				leaveStartDate: "2026-05-15",
+				leaveEndDate: "2026-05-20",
+				assignedFridayPlan: true,
+				subFullName: "خالد سعيد محمد",
+				subCivilId: "295050501234", // Valid Kuwaiti Civil ID Checksum
+				subCurrentMosque: "مسجد النور",
+				subJobTitle: "مؤذن",
+				subAssignedMosque: "مسجد الصحابة",
+				subNationality: "مصري",
+				subPhoneNumber: "60001234",
+				subAssignedWork: "الإمامة",
+				subAssignmentDuration: "5",
+				subStartDate: "2026-05-15",
+				subEndDate: "2026-05-20",
+				fridayPreacherName: "عمر خالد",
+				fridaySermonMosque: "مسجد الفرقان"
+			};
+
+			for (const [id, value] of Object.entries(testData)) {
+				const el = document.getElementById(id);
+				if (el) {
+					if (el.type === "checkbox") {
+						el.checked = value;
+					} else {
+						el.value = value;
+					}
+					// Remove error border if it exists
+					el.classList.remove("error-border");
+					const errSpan = document.getElementById(`error-${id}`);
+					if (errSpan) errSpan.classList.remove("show");
+				}
+			}
+		});
+	}
 });

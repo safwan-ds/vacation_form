@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تعبئة نموذج الإجازة</title>
+    <meta name="description" content="أداة لتعبئة نموذج الإجازة الإلكترونية تلقائياً من بيانات JSON">
+
+    <!-- Google Fonts: Cairo -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <!-- pdf-lib -->
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="fill-pdf.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <header class="app-header">
+            <div class="header-content">
+                <h1>تعبئة نموذج الإجازة</h1>
+                <p>الصق بيانات JSON من واتساب لتعبئة النموذج تلقائياً</p>
+            </div>
+            <div class="header-actions">
+                <a href="index.html" class="theme-toggle" aria-label="العودة للنموذج" title="العودة للنموذج">
+                    <i class="ph ph-arrow-right"></i>
+                </a>
+                <button id="theme-toggle" class="theme-toggle" aria-label="تغيير المظهر">
+                    <i class="ph ph-moon"></i>
+                </button>
+            </div>
+        </header>
+
+        <main class="form-wrapper">
+            <!-- Step 1: Paste JSON -->
+            <div id="step-paste" class="step-card active">
+                <div class="step-header">
+                    <div class="step-badge">
+                        <i class="ph ph-clipboard-text"></i>
+                        <span>الخطوة ١</span>
+                    </div>
+                    <h2>الصق بيانات JSON</h2>
+                </div>
+
+                <div class="json-input-area">
+                    <textarea id="json-input" class="form-control json-textarea"
+                        placeholder='الصق بيانات JSON هنا...&#10;&#10;مثال:&#10;{&#10;  "breakType": "دورية",&#10;  "fullName": "أحمد محمد عبدالله",&#10;  ...&#10;}'
+                        spellcheck="false"></textarea>
+
+                    <div id="json-error" class="json-error">
+                        <i class="ph ph-warning-circle"></i>
+                        <span id="json-error-text"></span>
+                    </div>
+                </div>
+
+                <button id="parse-btn" class="action-btn parse-btn" disabled>
+                    <i class="ph ph-magnifying-glass"></i>
+                    <span>معاينة البيانات</span>
+                </button>
+            </div>
+
+            <!-- Step 2: Preview & Fill -->
+            <div id="step-preview" class="step-card">
+                <div class="step-header">
+                    <div class="step-badge">
+                        <i class="ph ph-eye"></i>
+                        <span>الخطوة ٢</span>
+                    </div>
+                    <h2>معاينة البيانات</h2>
+                </div>
+
+                <div id="preview-container" class="preview-container"></div>
+
+                <div class="action-row">
+                    <button id="back-btn" class="action-btn secondary-btn">
+                        <i class="ph ph-arrow-right"></i>
+                        <span>رجوع</span>
+                    </button>
+                    <button id="fill-btn" class="action-btn fill-btn">
+                        <i class="ph ph-file-pdf"></i>
+                        <span>تعبئة وتحميل PDF</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Loading overlay -->
+            <div id="loading-overlay" class="loading-overlay">
+                <div class="loading-spinner">
+                    <div class="spinner-ring"></div>
+                    <p>جاري تعبئة النموذج...</p>
+                </div>
+            </div>
+
+            <!-- Success message -->
+            <div id="success-message" class="success-message">
+                <div class="success-icon">
+                    <i class="ph ph-check-circle"></i>
+                </div>
+                <h3>تم تحميل الملف بنجاح!</h3>
+                <p>تم تعبئة نموذج الإجازة وتحميله</p>
+                <button id="reset-btn" class="action-btn parse-btn">
+                    <i class="ph ph-arrow-counter-clockwise"></i>
+                    <span>تعبئة نموذج آخر</span>
+                </button>
+            </div>
+        </main>
+    </div>
+
+    <script src="fill-pdf.js"></script>
+</body>
+
+</html>
