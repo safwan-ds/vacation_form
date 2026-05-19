@@ -162,6 +162,31 @@ document.addEventListener("DOMContentLoaded", () => {
 	const resetBtn = document.getElementById("reset-btn");
 
 	let parsedData = null;
+	const urlParams = new URLSearchParams(window.location.search);
+	const USE_BACKEND = urlParams.get("backend") !== "0";
+	const API_BASE = window.__VACATION_API_BASE__ || "";
+
+	function showValidationErrors(errors) {
+		const errorEntries = Object.entries(errors || {});
+		if (errorEntries.length === 0) return;
+		const list = errorEntries
+			.map(([fieldId, message]) => `• ${fieldLabels[fieldId] || fieldId}: ${message}`)
+			.join("\n");
+		jsonErrorText.textContent = `أخطاء التحقق:\n${list}`;
+		jsonError.classList.add("show");
+	}
+
+	async function validateViaBackend(data) {
+		const response = await fetch(`${API_BASE}/validate`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ data }),
+		});
+		if (!response.ok) {
+			throw new Error("فشل الاتصال بخدمة التحقق");
+		}
+		return response.json();
+	}
 
 	// ── Enable/disable parse button based on input ──
 	jsonInput.addEventListener("input", () => {
@@ -175,13 +200,23 @@ document.addEventListener("DOMContentLoaded", () => {
 	});
 
 	// ── Parse JSON ──
-	parseBtn.addEventListener("click", () => {
+	parseBtn.addEventListener("click", async () => {
 		const raw = jsonInput.value.trim();
 		try {
 			parsedData = JSON.parse(raw);
 			if (typeof parsedData !== "object" || Array.isArray(parsedData)) {
 				throw new Error("يجب أن تكون البيانات كائن JSON وليس مصفوفة");
 			}
+
+			if (USE_BACKEND) {
+				const validationResult = await validateViaBackend(parsedData);
+				if (!validationResult.valid) {
+					showValidationErrors(validationResult.errors);
+					return;
+				}
+				parsedData = validationResult.cleanedData || parsedData;
+			}
+
 			showPreview(parsedData);
 		} catch (err) {
 			jsonErrorText.textContent = `خطأ في تحليل JSON: ${err.message}`;
@@ -257,6 +292,38 @@ document.addEventListener("DOMContentLoaded", () => {
 		loadingOverlay.classList.add("show");
 
 		try {
+			if (USE_BACKEND) {
+				const response = await fetch(`${API_BASE}/generate-pdf`, {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ data: parsedData }),
+				});
+
+				if (!response.ok) {
+					if (response.status === 400) {
+						const payload = await response.json();
+						const errors = payload?.detail?.errors || {};
+						showValidationErrors(errors);
+						throw new Error("فشل التحقق من صحة البيانات");
+					}
+					throw new Error("فشل إنشاء ملف PDF من الخادم");
+				}
+
+				const pdfBlob = await response.blob();
+				const url = URL.createObjectURL(pdfBlob);
+				const link = document.createElement("a");
+				link.href = url;
+				const employeeName = parsedData.fullName || "إجازة";
+				link.download = `إجازة - ${employeeName}.pdf`;
+				link.click();
+				URL.revokeObjectURL(url);
+
+				loadingOverlay.classList.remove("show");
+				stepPreview.classList.remove("active");
+				successMessage.classList.add("show");
+				return;
+			}
+
 			// Load the PDF template
 			const pdfUrl = "إجازة الكترونية.pdf";
 			const pdfBytes = await fetch(pdfUrl).then((res) => res.arrayBuffer());

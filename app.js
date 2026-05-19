@@ -35,15 +35,18 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 	let config = { whatsappNumber: "", fields: [] };
 	try {
-		const response = await fetch("config.json");
+		let response = await fetch("/config");
+		if (!response.ok) {
+			response = await fetch("config.json");
+		}
 		if (response.ok) {
 			config = await response.json();
 		} else {
-			console.error("Failed to load config.json");
+			console.error("Failed to load config from /config or config.json");
 		}
 	} catch (e) {
 		console.error(
-			"Error fetching config.json (might be CORS if running via file://)",
+			"Error fetching config (/config fallback to config.json)",
 			e,
 		);
 		return;
