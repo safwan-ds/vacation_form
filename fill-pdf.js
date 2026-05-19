@@ -163,6 +163,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 	let parsedData = null;
 	const urlParams = new URLSearchParams(window.location.search);
+	// Backend mode is enabled by default; use ?backend=0 to force legacy browser-only flow.
 	const USE_BACKEND = urlParams.get("backend") !== "0";
 	const API_BASE = window.__VACATION_API_BASE__ || "";
 
@@ -219,7 +220,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
 			showPreview(parsedData);
 		} catch (err) {
-			jsonErrorText.textContent = `خطأ في تحليل JSON: ${err.message}`;
+			const isSyntaxError = err instanceof SyntaxError;
+			jsonErrorText.textContent = isSyntaxError
+				? `خطأ في تحليل JSON: ${err.message}`
+				: err.message || "حدث خطأ غير متوقع";
 			jsonError.classList.add("show");
 		}
 	});

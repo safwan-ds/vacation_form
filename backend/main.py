@@ -1,8 +1,11 @@
 import io
 import json
+import logging
 import os
 import re
 import time
+from datetime import datetime
+from urllib.parse import quote
 from collections import defaultdict, deque
 from pathlib import Path
 from threading import Lock
@@ -31,6 +34,13 @@ RATE_LIMIT_REQUESTS = int(os.getenv("RATE_LIMIT_REQUESTS", "60"))
 RATE_LIMIT_WINDOW_SECONDS = int(os.getenv("RATE_LIMIT_WINDOW_SECONDS", "60"))
 MAX_CONTENT_LENGTH = int(os.getenv("MAX_CONTENT_LENGTH", str(64 * 1024)))
 MAX_FIELD_LENGTH = int(os.getenv("MAX_FIELD_LENGTH", "200"))
+# Kuwaiti civil IDs start with digit 1, 2, or 3 and are 12 digits in total.
+KUWAITI_CIVIL_ID_PATTERN = re.compile(r"[1-3]\d{11}")
+RADIO_YES_CANDIDATES = ["Yes", "yes", "On", "1", "True", "true"]
+RADIO_NO_CANDIDATES = ["No", "no", "Off", "0", "False", "false"]
+
+logger = logging.getLogger("vacation_form_api")
+logging.basicConfig(level=logging.INFO)
 
 app = FastAPI(title="Vacation Form API", version="1.0.0")
 
@@ -95,11 +105,18 @@ async def log_and_guard_requests(request: Request, call_next):
     client_ip = request.client.host if request.client else "unknown"
 
     content_length = request.headers.get("content-length")
-    if content_length and int(content_length) > MAX_CONTENT_LENGTH:
-        return JSONResponse(
-            status_code=413,
-            content={"detail": "Request payload too large"},
-        )
+    if content_length:
+        try:
+            if int(content_length) > MAX_CONTENT_LENGTH:
+                return JSONResponse(
+                    status_code=413,
+                    content={"detail": "Request payload too large"},
+                )
+        except ValueError:
+            return JSONResponse(
+                status_code=400,
+                content={"detail": "Content-Length header must be a valid integer"},
+            )
 
     now = time.time()
     with _rate_limit_lock:
@@ -116,7 +133,7 @@ async def log_and_guard_requests(request: Request, call_next):
     start = time.perf_counter()
     response = await call_next(request)
     elapsed_ms = (time.perf_counter() - start) * 1000
-    print(
+    logger.info(
         f"{request.method} {request.url.path} from={client_ip} "
         f"status={response.status_code} took_ms={elapsed_ms:.2f}"
     )
@@ -135,7 +152,8 @@ def _to_clean_str(value: Any) -> str:
 
 
 def _validate_civil_id(civil_id: str) -> bool:
-    if not re.fullmatch(r"[1-3]\d{11}", civil_id):
+    # Weighted modulo-11 checksum validation used by Kuwaiti civil IDs.
+    if not KUWAITI_CIVIL_ID_PATTERN.fullmatch(civil_id):
         return False
     weights = [2, 1, 6, 3, 7, 9, 10, 5, 8, 4, 2]
     total = sum(int(civil_id[i]) * weights[i] for i in range(11))
@@ -179,13 +197,24 @@ def validate_form_data(data: dict[str, Any]) -> tuple[dict[str, str], dict[str, 
 
         cleaned[field_id] = value
 
-    leave_start = cleaned.get("leaveStartDate")
-    leave_end = cleaned.get("leaveEndDate")
+    def parse_iso_date(field_id: str) -> datetime | None:
+        value = cleaned.get(field_id)
+        if not value:
+            return None
+        try:
+            return datetime.strptime(value, "%Y-%m-%d")
+        except ValueError:
+            errors[field_id] = "صيغة التاريخ غير صحيحة (YYYY-MM-DD)"
+            cleaned.pop(field_id, None)
+            return None
+
+    leave_start = parse_iso_date("leaveStartDate")
+    leave_end = parse_iso_date("leaveEndDate")
     if leave_start and leave_end and leave_end < leave_start:
         errors["leaveEndDate"] = "تاريخ النهاية يجب أن يكون بعد البداية"
 
-    sub_start = cleaned.get("subStartDate")
-    sub_end = cleaned.get("subEndDate")
+    sub_start = parse_iso_date("subStartDate")
+    sub_end = parse_iso_date("subEndDate")
     if sub_start and sub_end and sub_end < sub_start:
         errors["subEndDate"] = "تاريخ النهاية يجب أن يكون بعد البداية"
 
@@ -204,6 +233,7 @@ def generate_filled_pdf(cleaned_data: dict[str, str]) -> bytes:
     writer = PdfWriter()
     writer.clone_document_from_reader(reader)
 
+    pdf_fields_meta = reader.get_fields() or {}
     field_values: dict[str, str] = {}
     for field_id, value in cleaned_data.items():
         mapping = PDF_FIELD_MAP.get(field_id)
@@ -211,7 +241,17 @@ def generate_filled_pdf(cleaned_data: dict[str, str]) -> bytes:
             continue
 
         if mapping["type"] == "radio":
-            field_values[mapping["pdfName"]] = "Yes" if value == "نعم" else "no"
+            states_raw = pdf_fields_meta.get(mapping["pdfName"], {}).get("/_States_", [])
+            states = [str(state).lstrip("/") for state in states_raw]
+            candidates = RADIO_YES_CANDIDATES if value == "نعم" else RADIO_NO_CANDIDATES
+            selected = next((choice for choice in candidates if choice in states), None)
+            if selected is None:
+                selected = "Yes" if value == "نعم" else "No"
+                logger.warning(
+                    f"Warning: fallback radio value used for field '{mapping['pdfName']}' "
+                    f"because template states did not match expected candidates."
+                )
+            field_values[mapping["pdfName"]] = selected
         else:
             field_values[mapping["pdfName"]] = value
 
@@ -264,20 +304,30 @@ def generate_pdf(payload: FormSubmission):
         raise HTTPException(
             status_code=400,
             detail={
-                "message": "Validation failed",
+                "message": "فشل التحقق من صحة البيانات",
                 "errors": errors,
             },
         )
 
     pdf_bytes = generate_filled_pdf(cleaned_data)
     employee_name = cleaned_data.get("fullName", "إجازة")
-    safe_name = re.sub(r"[^\w\u0600-\u06FF\-\s]", "", employee_name).strip() or "إجازة"
+    # Keep filename safe by allowing alphanumerics, Arabic letters (\u0600-\u06FF),
+    # hyphen and spaces, and removing other symbols.
+    safe_name = (
+        re.sub(r"[^a-zA-Z0-9\u0600-\u06FF\-\s]", "", employee_name).strip() or "إجازة"
+    )
     filename = f"إجازة - {safe_name}.pdf"
+    encoded_filename = quote(filename)
 
     return StreamingResponse(
         io.BytesIO(pdf_bytes),
         media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        headers={
+            "Content-Disposition": (
+                f"attachment; filename=\"vacation-form.pdf\"; "
+                f"filename*=UTF-8''{encoded_filename}"
+            )
+        },
     )
 
 
