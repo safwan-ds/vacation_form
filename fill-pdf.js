@@ -301,6 +301,22 @@ document.addEventListener("DOMContentLoaded", () => {
 				}
 
 				try {
+					// Helper to calculate appropriate font size based on box height
+					const calculateFontSize = (field) => {
+						const widgets = field.acroField.getWidgets();
+						let minHeight = 999;
+						for (const widget of widgets) {
+							const rect = widget.getRectangle();
+							if (rect.height < minHeight) minHeight = rect.height;
+						}
+						// Use 55% of the box height to safely fit Arabic ascenders/descenders without clipping.
+						// Cap between 8pt and 14pt for consistency.
+						let size = Math.floor(minHeight * 0.55);
+						if (size < 8) size = 8;
+						if (size > 14) size = 14;
+						return size;
+					};
+
 					if (mapping.type === "text") {
 						const field = form.getTextField(mapping.pdfName);
 						if (field) {
@@ -312,9 +328,9 @@ document.addEventListener("DOMContentLoaded", () => {
 							}
 							// Set value and render with Arabic font
 							field.setText(value);
-							// Force a consistent font size (prevents giant text in small fields)
+							
 							if (typeof field.setFontSize === 'function') {
-								field.setFontSize(11);
+								field.setFontSize(calculateFontSize(field));
 							}
 							field.updateAppearances(arabicFont);
 						}
@@ -338,7 +354,7 @@ document.addEventListener("DOMContentLoaded", () => {
 							}
 							field.select(matchedValue);
 							if (typeof field.setFontSize === 'function') {
-								field.setFontSize(11);
+								field.setFontSize(calculateFontSize(field));
 							}
 							field.updateAppearances(arabicFont);
 						}
