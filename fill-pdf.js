@@ -261,7 +261,7 @@ document.addEventListener("DOMContentLoaded", () => {
 			const pdfUrl = "إجازة الكترونية.pdf";
 			const pdfBytes = await fetch(pdfUrl).then((res) => res.arrayBuffer());
 
-			const { PDFDocument, PDFName, PDFBool, PDFString, PDFHexString } =
+			const { PDFDocument, PDFName, PDFBool, PDFString, PDFHexString, rgb } =
 				PDFLib;
 			const pdfDoc = await PDFDocument.load(pdfBytes);
 
@@ -286,6 +286,9 @@ document.addEventListener("DOMContentLoaded", () => {
 				"subPhoneNumber",
 				"subAssignmentDuration",
 			]);
+
+			// Array to store drawing operations to execute AFTER flattening
+			const textDrawOperations = [];
 
 			// Fill each field
 			for (const [fieldId, rawValue] of Object.entries(parsedData)) {
@@ -321,7 +324,7 @@ document.addEventListener("DOMContentLoaded", () => {
 									);
 									if (fuzzyMatch) matchedValue = fuzzyMatch;
 								}
-								field.clear(); // IMPORTANT: Do not select Arabic value, or flatten() will crash trying to encode it with WinAnsi
+								field.clear(); 
 							}
 						}
 
@@ -338,7 +341,7 @@ document.addEventListener("DOMContentLoaded", () => {
 									widget.dict.delete(PDFName.of("AA"));
 								}
 
-								// Get bounding box
+								// Get bounding box before flatten() destroys it
 								const rect = widget.getRectangle();
 								
 								// Calculate horizontal text width
@@ -351,17 +354,12 @@ document.addEventListener("DOMContentLoaded", () => {
 									if (size < 6) size = 6; // Hard minimum to remain readable
 								}
 
-								// Draw the text manually.
-								// rect.y is the bottom of the box. Adding 5 units of padding acts as a safe baseline 
-								// for Arabic descenders, preventing vertical cropping entirely.
-								const pages = pdfDoc.getPages();
-								// Assuming single-page template (index 0)
-								pages[0].drawText(matchedValue, {
+								// Queue the text drawing for AFTER flattening
+								textDrawOperations.push({
+									text: matchedValue,
 									x: rect.x + 4,
 									y: rect.y + 5,
-									size: size,
-									font: arabicFont,
-									color: rgb(0, 0, 0),
+									size: size
 								});
 
 								// Delete appearance streams so flatten() cleans up the widget seamlessly
@@ -422,6 +420,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
 			// Flatten the form: stamps field values as static content and removes all fields
 			form.flatten();
+
+			// Now draw the text ON TOP of the flattened document
+			const pages = pdfDoc.getPages();
+			for (const op of textDrawOperations) {
+				pages[0].drawText(op.text, {
+					x: op.x,
+					y: op.y,
+					size: op.size,
+					font: arabicFont,
+					color: rgb(0, 0, 0),
+				});
+			}
 
 			const filledPdfBytes = await pdfDoc.save();
 			const blob = new Blob([filledPdfBytes], { type: "application/pdf" });
