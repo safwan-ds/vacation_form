@@ -300,63 +300,72 @@ document.addEventListener("DOMContentLoaded", () => {
 					value = value.replace(/[^0-9]/g, "");
 				}
 
-				try {
-					// Helper to calculate appropriate font size based on box height
-					const calculateFontSize = (field) => {
-						const widgets = field.acroField.getWidgets();
-						let minHeight = 999;
-						for (const widget of widgets) {
-							const rect = widget.getRectangle();
-							if (rect.height < minHeight) minHeight = rect.height;
-						}
-						// Use 55% of the box height to safely fit Arabic ascenders/descenders without clipping.
-						// Cap between 8pt and 14pt for consistency.
-						let size = Math.floor(minHeight * 0.55);
-						if (size < 8) size = 8;
-						if (size > 14) size = 14;
-						return size;
-					};
+					if (mapping.type === "text" || mapping.type === "dropdown") {
+						let field;
+						let matchedValue = value;
 
-					if (mapping.type === "text") {
-						const field = form.getTextField(mapping.pdfName);
+						if (mapping.type === "text") {
+							field = form.getTextField(mapping.pdfName);
+						} else {
+							field = form.getDropdown(mapping.pdfName);
+							if (field) {
+								const options = field.getOptions();
+								const exactMatch = options.find((opt) => opt === value);
+								if (!exactMatch) {
+									const fuzzyMatch = options.find(
+										(opt) =>
+											opt.trim() === value.trim() ||
+											opt.includes(value) ||
+											value.includes(opt),
+									);
+									if (fuzzyMatch) matchedValue = fuzzyMatch;
+								}
+								field.select(matchedValue); // To satisfy any internal state if needed
+							}
+						}
+
 						if (field) {
-							// Remove number formatting scripts (AFNumber_Format)
-							field.acroField.dict.delete(PDFName.of("AA"));
+							// For text fields, clear any value or formatting
+							if (mapping.type === "text") {
+								field.setText("");
+								field.acroField.dict.delete(PDFName.of("AA"));
+							}
+
 							const widgets = field.acroField.getWidgets();
 							for (const widget of widgets) {
-								widget.dict.delete(PDFName.of("AA"));
+								if (mapping.type === "text") {
+									widget.dict.delete(PDFName.of("AA"));
+								}
+
+								// Get bounding box
+								const rect = widget.getRectangle();
+								
+								// Calculate horizontal text width
+								let size = 11;
+								const textWidth = arabicFont.widthOfTextAtSize(matchedValue, size);
+								
+								// Shrink horizontally if text is too long for the box
+								if (textWidth > rect.width - 4) {
+									size = size * ((rect.width - 4) / textWidth);
+									if (size < 6) size = 6; // Hard minimum to remain readable
+								}
+
+								// Draw the text manually.
+								// rect.y is the bottom of the box. Adding 5 units of padding acts as a safe baseline 
+								// for Arabic descenders, preventing vertical cropping entirely.
+								const pages = pdfDoc.getPages();
+								// Assuming single-page template (index 0)
+								pages[0].drawText(matchedValue, {
+									x: rect.x + 4,
+									y: rect.y + 5,
+									size: size,
+									font: arabicFont,
+									color: rgb(0, 0, 0),
+								});
+
+								// Delete appearance streams so flatten() cleans up the widget seamlessly
+								widget.dict.delete(PDFName.of("AP"));
 							}
-							// Set value and render with Arabic font
-							field.setText(value);
-							
-							if (typeof field.setFontSize === 'function') {
-								field.setFontSize(calculateFontSize(field));
-							}
-							field.updateAppearances(arabicFont);
-						}
-					} else if (mapping.type === "dropdown") {
-						const field = form.getDropdown(mapping.pdfName);
-						if (field) {
-							// Find matching option (handle whitespace differences)
-							const options = field.getOptions();
-							let matchedValue = value;
-							const exactMatch = options.find(
-								(opt) => opt === value,
-							);
-							if (!exactMatch) {
-								const fuzzyMatch = options.find(
-									(opt) =>
-										opt.trim() === value.trim() ||
-										opt.includes(value) ||
-										value.includes(opt),
-								);
-								if (fuzzyMatch) matchedValue = fuzzyMatch;
-							}
-							field.select(matchedValue);
-							if (typeof field.setFontSize === 'function') {
-								field.setFontSize(calculateFontSize(field));
-							}
-							field.updateAppearances(arabicFont);
 						}
 					} else if (mapping.type === "radio") {
 						// Radio: set /V and /AS directly (keeps existing AP streams for flatten)
