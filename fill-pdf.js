@@ -290,6 +290,32 @@ document.addEventListener("DOMContentLoaded", () => {
 			// Array to store drawing operations to execute AFTER flattening
 			const textDrawOperations = [];
 
+			// CRITICAL: Clear ALL form fields upfront to prevent WinAnsi encoding crash.
+			// The PDF template has Arabic default values pre-selected in dropdown fields.
+			// If we don't clear them, flatten() will try to render them with the default
+			// Latin font and crash silently with "WinAnsi cannot encode".
+			const allFields = form.getFields();
+			for (const field of allFields) {
+				const type = field.constructor.name;
+				if (type === "PDFDropdown") {
+					try { field.clear(); } catch (e) { /* ignore */ }
+					const widgets = field.acroField.getWidgets();
+					for (const w of widgets) {
+						w.dict.delete(PDFName.of("AP"));
+					}
+				} else if (type === "PDFTextField") {
+					try {
+						field.setText("");
+						field.acroField.dict.delete(PDFName.of("AA"));
+					} catch (e) { /* ignore */ }
+					const widgets = field.acroField.getWidgets();
+					for (const w of widgets) {
+						w.dict.delete(PDFName.of("AA"));
+						w.dict.delete(PDFName.of("AP"));
+					}
+				}
+			}
+
 			// Fill each field
 			for (const [fieldId, rawValue] of Object.entries(parsedData)) {
 				const mapping = pdfFieldMap[fieldId];
