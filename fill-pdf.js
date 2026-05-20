@@ -321,7 +321,7 @@ document.addEventListener("DOMContentLoaded", () => {
 									);
 									if (fuzzyMatch) matchedValue = fuzzyMatch;
 								}
-								field.select(matchedValue); // To satisfy any internal state if needed
+								field.clear(); // IMPORTANT: Do not select Arabic value, or flatten() will crash trying to encode it with WinAnsi
 							}
 						}
 
