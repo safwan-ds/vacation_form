@@ -300,6 +300,7 @@ document.addEventListener("DOMContentLoaded", () => {
 					value = value.replace(/[^0-9]/g, "");
 				}
 
+				try {
 					if (mapping.type === "text" || mapping.type === "dropdown") {
 						let field;
 						let matchedValue = value;
