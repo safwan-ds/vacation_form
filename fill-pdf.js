@@ -312,6 +312,10 @@ document.addEventListener("DOMContentLoaded", () => {
 							}
 							// Set value and render with Arabic font
 							field.setText(value);
+							// Force a consistent font size (prevents giant text in small fields)
+							if (typeof field.setFontSize === 'function') {
+								field.setFontSize(11);
+							}
 							field.updateAppearances(arabicFont);
 						}
 					} else if (mapping.type === "dropdown") {
@@ -333,6 +337,9 @@ document.addEventListener("DOMContentLoaded", () => {
 								if (fuzzyMatch) matchedValue = fuzzyMatch;
 							}
 							field.select(matchedValue);
+							if (typeof field.setFontSize === 'function') {
+								field.setFontSize(11);
+							}
 							field.updateAppearances(arabicFont);
 						}
 					} else if (mapping.type === "radio") {
