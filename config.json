@@ -6,13 +6,42 @@
 			"id": "breakType",
 			"label": "نوع الإجازة",
 			"options": [
-				{ "value": "دورية", "label": "دورية" },
-				{ "value": "إذن انقطاع", "label": "إذن انقطاع" },
-				{ "value": "خاصة", "label": "خاصة" },
-				{ "value": "تمديد", "label": "تمديد" },
-				{ "value": "تعديل", "label": "تعديل" },
-				{ "value": "قطع", "label": "قطع" },
-				{ "value": "إلغاء", "label": "إلغاء" }
+				{
+					"value": "دورية",
+					"label": "دورية"
+				},
+				{
+					"value": "إذن انقطاع",
+					"label": "إذن انقطاع"
+				},
+				{
+					"value": "خاصة",
+					"label": "خاصة"
+				},
+				{
+					"value": "تمديد",
+					"label": "تمديد"
+				},
+				{
+					"value": "تعديل",
+					"label": "تعديل"
+				},
+				{
+					"value": "قطع",
+					"label": "قطع"
+				},
+				{
+					"value": "إلغاء",
+					"label": "إلغاء"
+				},
+				{
+					"value": "مرضي",
+					"label": "مرضي"
+				},
+				{
+					"value": "حج",
+					"label": "حج"
+				}
 			],
 			"required": true
 		},
@@ -39,12 +68,30 @@
 			"id": "jobTitle",
 			"label": "المسمى الوظيفي",
 			"options": [
-				{ "value": "موجه إمامة وخطابة", "label": "موجه إمامة وخطابة" },
-				{ "value": "إمام وخطيب أول", "label": "إمام وخطيب أول" },
-				{ "value": "إمام وخطيب", "label": "إمام وخطيب" },
-				{ "value": "إمام مبتدئ", "label": "إمام مبتدئ" },
-				{ "value": "إمام", "label": "إمام" },
-				{ "value": "مؤذن", "label": "مؤذن" }
+				{
+					"value": "موجه إمامة وخطابة",
+					"label": "موجه إمامة وخطابة"
+				},
+				{
+					"value": "إمام وخطيب أول",
+					"label": "إمام وخطيب أول"
+				},
+				{
+					"value": "إمام وخطيب",
+					"label": "إمام وخطيب"
+				},
+				{
+					"value": "إمام مبتدئ",
+					"label": "إمام مبتدئ"
+				},
+				{
+					"value": "إمام",
+					"label": "إمام"
+				},
+				{
+					"value": "مؤذن",
+					"label": "مؤذن"
+				}
 			],
 			"required": true,
 			"halfWidth": true
@@ -74,19 +121,27 @@
 			"id": "fileContract",
 			"label": "العقد",
 			"options": [
-				{ "value": "إيرادات متفرغ", "label": "إيرادات متفرغ" },
-				{ "value": "إيرادات غير متفرغ", "label": "إيرادات غير متفرغ" },
-				{ "value": "استعانة بخبرات", "label": "استعانة بخبرات" },
-				{ "value": "مكافآت", "label": "مكافآت" },
-				{ "value": "عقد ثاني", "label": "عقد ثاني" }
+				{
+					"value": "إيرادات متفرغ",
+					"label": "إيرادات متفرغ"
+				},
+				{
+					"value": "إيرادات غير متفرغ",
+					"label": "إيرادات غير متفرغ"
+				},
+				{
+					"value": "إستعانة بخبرات",
+					"label": "إستعانة بخبرات"
+				},
+				{
+					"value": "مكافآت ",
+					"label": "مكافآت"
+				},
+				{
+					"value": "عقد ثاني",
+					"label": "عقد ثاني"
+				}
 			],
-			"required": true,
-			"halfWidth": true
-		},
-		{
-			"type": "number",
-			"id": "leaveDuration",
-			"label": "مدة الإجازة",
 			"required": true,
 			"halfWidth": true
 		},
@@ -111,7 +166,12 @@
 			"required": true,
 			"halfWidth": true
 		},
-
+		{
+			"type": "signature",
+			"id": "applicantSignature",
+			"label": "التوقيع",
+			"required": true
+		},
 		{
 			"type": "section",
 			"label": "بيانات البديل"
@@ -120,102 +180,126 @@
 			"type": "text",
 			"id": "subFullName",
 			"label": "الاسم الثلاثي",
-			"required": true
+			"required": false
 		},
 		{
 			"type": "number",
 			"id": "subCivilId",
 			"label": "الرقم المدني",
-			"required": true
+			"required": false
 		},
 		{
 			"type": "text",
 			"id": "subCurrentMosque",
 			"label": "المسجد الحالي",
-			"required": true
+			"required": false
 		},
 		{
 			"type": "select",
 			"id": "subJobTitle",
 			"label": "المسمى الوظيفي",
 			"options": [
-				{ "value": "موجه إمامة وخطابة", "label": "موجه إمامة وخطابة" },
-				{ "value": "إمام وخطيب أول", "label": "إمام وخطيب أول" },
-				{ "value": "إمام وخطيب ", "label": "إمام وخطيب " },
-				{ "value": "إمام مبتدئ", "label": "إمام مبتدئ" },
-				{ "value": "إمام", "label": "إمام" },
-				{ "value": "مؤذن", "label": "مؤذن" }
+				{
+					"value": "",
+					"label": "اختر..."
+				},
+				{
+					"value": "موجه إمامة وخطابة",
+					"label": "موجه إمامة وخطابة"
+				},
+				{
+					"value": "إمام وخطيب أول",
+					"label": "إمام وخطيب أول"
+				},
+				{
+					"value": "إمام وخطيب ",
+					"label": "إمام وخطيب "
+				},
+				{
+					"value": "إمام مبتدئ",
+					"label": "إمام مبتدئ"
+				},
+				{
+					"value": "إمام",
+					"label": "إمام"
+				},
+				{
+					"value": "مؤذن",
+					"label": "مؤذن"
+				}
 			],
-			"required": true,
+			"required": false,
 			"halfWidth": true
 		},
 		{
 			"type": "text",
 			"id": "subNationality",
 			"label": "الجنسية",
-			"required": true,
+			"required": false,
 			"halfWidth": true
 		},
 		{
 			"type": "text",
 			"id": "subAssignedMosque",
 			"label": "مسجد الانتداب",
-			"required": true
+			"required": false
 		},
 		{
 			"type": "tel",
 			"id": "subPhoneNumber",
 			"label": "رقم الهاتف",
-			"required": true
+			"required": false
 		},
 		{
 			"type": "select",
 			"id": "subAssignedWork",
 			"label": "العمل المكلف به",
 			"options": [
-				{ "value": "الإمامة", "label": "الإمامة" },
-				{ "value": "الأذان", "label": "الأذان" }
+				{
+					"value": "",
+					"label": "اختر..."
+				},
+				{
+					"value": "موجه إمامة وخطابة",
+					"label": "موجه إمامة وخطابة"
+				},
+				{
+					"value": "إمام وخطيب أول",
+					"label": "إمام وخطيب أول"
+				},
+				{
+					"value": "إمام وخطيب ",
+					"label": "إمام وخطيب "
+				},
+				{
+					"value": "إمام مبتدئ",
+					"label": "إمام مبتدئ"
+				},
+				{
+					"value": "إمام",
+					"label": "إمام"
+				},
+				{
+					"value": "مؤذن",
+					"label": "مؤذن"
+				}
 			],
-			"required": true,
-			"halfWidth": true
-		},
-		{
-			"type": "number",
-			"id": "subAssignmentDuration",
-			"label": "مدة التكليف",
-			"required": true,
+			"required": false,
 			"halfWidth": true
 		},
 		{
 			"type": "date",
 			"id": "subStartDate",
 			"label": "بداية التكليف",
-			"required": true,
+			"required": false,
 			"halfWidth": true
 		},
 		{
 			"type": "date",
 			"id": "subEndDate",
 			"label": "نهاية التكليف",
-			"required": true,
+			"required": false,
 			"halfWidth": true
-		},
-
-		{
-			"type": "section",
-			"label": "بديل خطيب الجمعة"
-		},
-		{
-			"type": "text",
-			"id": "fridayPreacherName",
-			"label": "الاسم",
-			"required": false
-		},
-		{
-			"type": "text",
-			"id": "fridaySermonMosque",
-			"label": "مسجد الخطبة",
-			"required": false
 		}
 	]
 }

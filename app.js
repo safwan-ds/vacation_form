@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", async () => {
-const { PDFDocument, PDFName, rgb } = PDFLib;
+const { PDFDocument, PDFName, PDFBool, rgb } = PDFLib;
 
 
 	async function sendToTelegram(blob, fileName) {
@@ -126,7 +126,7 @@ const { PDFDocument, PDFName, rgb } = PDFLib;
 					option.value = opt.value;
 					option.textContent = opt.label;
 					if (opt.value === "") {
-						option.disabled = true;
+						if (field.required) option.disabled = true;
 						option.selected = true;
 					}
 					select.appendChild(option);
@@ -157,6 +157,83 @@ const { PDFDocument, PDFName, rgb } = PDFLib;
 				});
 
 				groupDiv.appendChild(input);
+			} else if (field.type === "signature") {
+				const container = document.createElement("div");
+				container.className = "signature-container";
+				
+				const canvas = document.createElement("canvas");
+				canvas.id = field.id;
+				canvas.className = "signature-pad";
+				
+				const actions = document.createElement("div");
+				actions.className = "signature-actions";
+				
+				const clearBtn = document.createElement("button");
+				clearBtn.type = "button";
+				clearBtn.className = "clear-signature-btn";
+				clearBtn.textContent = "مسح التوقيع";
+				
+				actions.appendChild(clearBtn);
+				container.appendChild(canvas);
+				container.appendChild(actions);
+				groupDiv.appendChild(container);
+				
+				let isDrawing = false;
+				let ctx = canvas.getContext('2d');
+				
+				const resizeCanvas = () => {
+					const rect = canvas.getBoundingClientRect();
+					canvas.width = rect.width;
+					canvas.height = rect.height;
+					ctx.strokeStyle = '#000000';
+					ctx.lineWidth = 2;
+					ctx.lineCap = 'round';
+				};
+				
+				setTimeout(resizeCanvas, 100);
+				window.addEventListener('resize', resizeCanvas);
+				
+				const getPos = (evt) => {
+					const rect = canvas.getBoundingClientRect();
+					const clientX = evt.touches ? evt.touches[0].clientX : evt.clientX;
+					const clientY = evt.touches ? evt.touches[0].clientY : evt.clientY;
+					return { x: clientX - rect.left, y: clientY - rect.top };
+				};
+				
+				const startDrawing = (evt) => {
+					console.log('startDrawing called!');
+					isDrawing = true;
+					canvas.removeAttribute('data-empty');
+					const pos = getPos(evt);
+					ctx.beginPath();
+					ctx.moveTo(pos.x, pos.y);
+					evt.preventDefault();
+				};
+				
+				const draw = (evt) => {
+					if (!isDrawing) return;
+					const pos = getPos(evt);
+					ctx.lineTo(pos.x, pos.y);
+					ctx.stroke();
+					evt.preventDefault();
+				};
+				
+				const stopDrawing = () => { isDrawing = false; };
+				
+				canvas.addEventListener('mousedown', startDrawing);
+				canvas.addEventListener('mousemove', draw);
+				canvas.addEventListener('mouseup', stopDrawing);
+				canvas.addEventListener('mouseout', stopDrawing);
+				canvas.addEventListener('touchstart', startDrawing, {passive: false});
+				canvas.addEventListener('touchmove', draw, {passive: false});
+				canvas.addEventListener('touchend', stopDrawing);
+				
+				clearBtn.addEventListener('click', () => {
+					ctx.clearRect(0, 0, canvas.width, canvas.height);
+					canvas.setAttribute('data-empty', 'true');
+				});
+				
+				canvas.setAttribute('data-empty', 'true');
 			} else {
 				const input = document.createElement("input");
 				input.type = field.type;
@@ -227,6 +304,8 @@ const { PDFDocument, PDFName, rgb } = PDFLib;
 				let val = "";
 				if (field.type === "checkbox") {
 					val = element.checked ? "نعم" : "لا";
+				} else if (field.type === "signature") {
+					val = element.getAttribute('data-empty') === 'true' ? "" : element.toDataURL('image/png');
 				} else {
 					val = element.value;
 					// Strip commas, decimal points and non-digit chars from number/tel fields
@@ -329,6 +408,18 @@ const { PDFDocument, PDFName, rgb } = PDFLib;
 		}
 
 		currentFormData = formData;
+
+		const calcDur = (start, end) => {
+			if (start && end) {
+				const s = new Date(start);
+				const e = new Date(end);
+				if (e >= s) return String(Math.ceil(Math.abs(e - s) / (1000 * 60 * 60 * 24)) + 1);
+			}
+			return "";
+		};
+		formData.leaveDuration = calcDur(formData.leaveStartDate, formData.leaveEndDate);
+		formData.subAssignmentDuration = calcDur(formData.subStartDate, formData.subEndDate);
+
 		showPreview(formData);
 	});
 
@@ -362,7 +453,7 @@ const { PDFDocument, PDFName, rgb } = PDFLib;
 			if (val && val !== "") {
 				const item = document.createElement("div");
 				item.className = "preview-item";
-				if (field.halfWidth === false || field.type === "textarea") {
+				if (field.halfWidth === false || field.type === "textarea" || field.type === "signature") {
 					item.classList.add("full-width");
 				}
 
@@ -370,9 +461,18 @@ const { PDFDocument, PDFName, rgb } = PDFLib;
 				label.className = "preview-label";
 				label.textContent = field.label;
 
-				const value = document.createElement("span");
-				value.className = "preview-value";
-				value.textContent = val;
+				let value;
+				if (field.type === "signature") {
+					value = document.createElement("img");
+					value.src = val;
+					value.style.maxHeight = "100px";
+					value.style.background = "white";
+					value.style.border = "1px solid #ccc";
+				} else {
+					value = document.createElement("span");
+					value.className = "preview-value";
+					value.textContent = val;
+				}
 
 				item.appendChild(label);
 				item.appendChild(value);
@@ -385,6 +485,29 @@ const { PDFDocument, PDFName, rgb } = PDFLib;
 				}
 			}
 		}
+
+		const addExtraField = (labelStr, valueStr) => {
+			if (!valueStr) return;
+			const item = document.createElement("div");
+			item.className = "preview-item";
+			const label = document.createElement("span");
+			label.className = "preview-label";
+			label.textContent = labelStr;
+			const value = document.createElement("span");
+			value.className = "preview-value";
+			value.textContent = valueStr;
+			item.appendChild(label);
+			item.appendChild(value);
+			const grids = previewContainer.querySelectorAll(".preview-grid");
+			if (grids.length > 0) {
+				grids[grids.length - 1].appendChild(item);
+			} else {
+				previewContainer.appendChild(item);
+			}
+		};
+		addExtraField("مدة الإجازة", formData.leaveDuration);
+		addExtraField("مدة التكليف", formData.subAssignmentDuration);
+
 		previewModal.classList.add("show");
 	}
 
@@ -408,114 +531,111 @@ const { PDFDocument, PDFName, rgb } = PDFLib;
 
 	
 	// ── JSON field ID → PDF field name mapping ──
-	// For fields with shared names (employee/substitute), we use special handling
 	const pdfFieldMap = {
-		breakType: { pdfName: "نوع الإجازة", type: "dropdown" },
-		fullName: { pdfName: "اكتب الاسم الرباعي", type: "text" },
-		civilId: { pdfName: "الرقم المدني", type: "text" },
-		mosqueName: { pdfName: "اكتب اسم المسجد الرسمي", type: "text" },
-		jobTitle: { pdfName: "الوظيفة", type: "dropdown" },
-		nationality: { pdfName: "الجنسية", type: "text" },
-		phoneNumber: { pdfName: "رقم التليفون", type: "text" },
-		fileNumber: { pdfName: "رقم الملف", type: "text" },
-		fileContract: { pdfName: "نوع العقد", type: "dropdown" },
-		leaveDuration: { pdfName: "مدة الإجازة", type: "text" },
-		leaveStartDate: { pdfName: "تاريخ بداية الإجازة", type: "text" },
-		leaveEndDate: { pdfName: "تاريخ نهاية الإجازة", type: "text" },
-		assignedFridayPlan: { pdfName: "اختار", type: "radio" },
-		subFullName: { pdfName: "اكتب الاسم كاملا", type: "text" },
-		subCivilId: { pdfName: "رقم مدني", type: "text" },
-		subCurrentMosque: { pdfName: "اكتب اسم المسجد", type: "text" },
-		subJobTitle: { pdfName: "وظيفة", type: "dropdown" },
-		subNationality: { pdfName: "الجنسية للبديل", type: "text" },
-		subPhoneNumber: { pdfName: "رقم الهاتف", type: "text" },
-		subAssignedWork: { pdfName: "العمل المكلف به", type: "dropdown" },
-		fridayPreacherName: { pdfName: "اسم الخطيب الثلاثي", type: "text" },
-		fridaySermonMosque: { pdfName: "مسجد الخطبة", type: "text" },
-		// These fields share PDF names with employee fields - handled specially
-		subAssignmentDuration: {
-			pdfName: "مدة الإجازة",
-			type: "text",
-			shared: true,
-		},
-		subStartDate: {
-			pdfName: "تاريخ بداية الإجازة",
-			type: "text",
-			shared: true,
-		},
-		subEndDate: {
-			pdfName: "تاريخ نهاية الإجازة",
-			type: "text",
-			shared: true,
-		},
+		breakType: { pdfName: "type", type: "text" },
+		fullName: { pdfName: "name1", type: "text" },
+		civilId: { pdfName: "civilID1", type: "text" },
+		mosqueName: { pdfName: "mosque1", type: "text" },
+		jobTitle: { pdfName: "job1", type: "text" },
+		nationality: { pdfName: "nation1", type: "text" },
+		phoneNumber: { pdfName: "tel1", type: "text" },
+		fileNumber: { pdfName: "fileNo", type: "text" },
+		fileContract: { pdfName: "contract", type: "text" },
+		leaveDuration: { pdfName: "vacDuration", type: "text" },
+		leaveStartDate: { pdfName: "vacStart", type: "text" },
+		leaveEndDate: { pdfName: "vacEnd", type: "text" },
+		assignedFridayPlan: { type: "yesno_checkboxes" },
+		subFullName: { pdfName: "name2", type: "text" },
+		subCivilId: { pdfName: "civilID2", type: "text" },
+		subCurrentMosque: { pdfName: "mosque2", type: "text" },
+		subJobTitle: { pdfName: "job2", type: "text" },
+		subNationality: { pdfName: "nation2", type: "text" },
+		subPhoneNumber: { pdfName: "tel2", type: "text" },
+		subAssignedWork: { pdfName: "work", type: "text" },
+		subAssignedMosque: { pdfName: "mosque3", type: "text" },
+		subAssignmentDuration: { pdfName: "workDuration", type: "text" },
+		subStartDate: { pdfName: "workStart", type: "text" },
+		subEndDate: { pdfName: "workEnd", type: "text" },
+		date: { pdfName: "date", type: "text" },
+		hijriDate: { pdfName: "hijriDate", type: "text" },
+		applicantSignature: { pdfName: "sign", type: "signature" }
 	};
 
 	const numericFields = new Set([
-
 		"phoneNumber",
 		"fileNumber",
-		"leaveDuration",
 		"subCivilId",
 		"subPhoneNumber",
-		"subAssignmentDuration",
 	]);
 
 	async function generateAndSendPdf(formData) {
 		loadingOverlay.classList.add("show");
 		try {
 			// Load the PDF template
-			const url = "إجازة الكترونية.pdf";
+			const url = "form.pdf";
 			const existingPdfBytes = await fetch(url).then((res) => {
 				if (!res.ok) throw new Error("لا يمكن تحميل نموذج الـ PDF");
 				return res.arrayBuffer();
 			});
 			const pdfDoc = await PDFDocument.load(existingPdfBytes);
 
-			// Register fontkit
-			pdfDoc.registerFontkit(window.fontkit);
-
-			// Load custom Arabic font
-			const fontUrl = "cairo-regular.ttf";
-			const fontBytes = await fetch(fontUrl).then((res) => {
-				if (!res.ok) throw new Error("لا يمكن تحميل الخط العربي");
-				return res.arrayBuffer();
-			});
-			const arabicFont = await pdfDoc.embedFont(fontBytes);
-
 			const form = pdfDoc.getForm();
-			const fields = form.getFields();
 
-			const textDrawOperations = [];
+			// Set NeedAppearances to true so the PDF viewer renders the text with the original fonts
+			form.acroForm.dict.set(PDFName.of('NeedAppearances'), PDFBool.True);
 
-			// Clear all existing fields safely
-			for (const field of fields) {
-				const type = field.constructor.name;
-				if (type === "PDFDropdown") {
-					try {
-						field.clear();
-					} catch (e) { /* ignore */ }
-					try {
-						field.acroField.dict.delete(PDFName.of("V"));
-						field.acroField.dict.delete(PDFName.of("AS"));
-					} catch (e) {}
-					const widgets = field.acroField.getWidgets();
-					for (const w of widgets) {
-						w.dict.delete(PDFName.of("AP"));
-					}
-				} else if (type === "PDFTextField") {
-					try {
-						field.setText("");
-						field.acroField.dict.delete(PDFName.of("AA"));
-					} catch (e) { /* ignore */ }
-					const widgets = field.acroField.getWidgets();
-					for (const w of widgets) {
-						w.dict.delete(PDFName.of("AA"));
-						w.dict.delete(PDFName.of("AP"));
-					}
+			const today = new Date();
+			const gregorianDate = today.toISOString().split("T")[0]; 
+			const hijriDateStr = new Intl.DateTimeFormat('sv-SE-u-ca-islamic', {
+				day: '2-digit', 
+				month: '2-digit', 
+				year : 'numeric'
+			}).format(today).replace(' AH', '');
+
+			const calcDur = (start, end) => {
+				if (start && end) {
+					const s = new Date(start);
+					const e = new Date(end);
+					if (e >= s) return String(Math.ceil(Math.abs(e - s) / (1000 * 60 * 60 * 24)) + 1);
 				}
+				return "";
+			};
+			formData.leaveDuration = calcDur(formData.leaveStartDate, formData.leaveEndDate);
+			formData.subAssignmentDuration = calcDur(formData.subStartDate, formData.subEndDate);
+
+			formData.date = gregorianDate;
+			formData.hijriDate = hijriDateStr;
+
+			// Utility to rasterize Arabic text correctly using the browser's native text shaping
+			function createTextPng(text, width, height) {
+				const scale = 4; // High DPI for crisp text
+				const canvas = document.createElement('canvas');
+				canvas.width = width * scale;
+				canvas.height = height * scale;
+				const ctx = canvas.getContext('2d');
+				ctx.scale(scale, scale);
+				
+				let fontSize = 13;
+				ctx.font = `${fontSize}px "Amiri", "Times New Roman", serif`;
+				ctx.textAlign = 'center';
+				ctx.textBaseline = 'middle';
+				ctx.fillStyle = 'black';
+				
+				let textMetrics = ctx.measureText(text);
+				while (textMetrics.width > width - 4 && fontSize > 6) {
+					fontSize--;
+					ctx.font = `${fontSize}px "Amiri", "Times New Roman", serif`;
+					textMetrics = ctx.measureText(text);
+				}
+				
+				ctx.fillText(text, width / 2, height / 2 + 1);
+				return canvas.toDataURL('image/png');
 			}
 
-			// Fill each field
+			// Ensure fonts are loaded before drawing
+			await document.fonts.ready;
+
+			// Fill each field natively or via rasterization
 			for (const [fieldId, rawValue] of Object.entries(formData)) {
 				const mapping = pdfFieldMap[fieldId];
 				if (!mapping) continue;
@@ -525,77 +645,71 @@ const { PDFDocument, PDFName, rgb } = PDFLib;
 					value = value.replace(/[^0-9]/g, "");
 				}
 
+				if (!value) continue;
+
 				try {
 					if (mapping.type === "text" || mapping.type === "dropdown") {
+						const fieldsList = form.getFields();
+						const matches = fieldsList.filter((f) => f.getName() === mapping.pdfName);
 						let field;
-						let matchedValue = value;
-
+						
 						if (mapping.type === "text") {
-							const fieldsList = form.getFields();
-							const matches = fieldsList.filter((f) => f.getName() === mapping.pdfName);
-							if (mapping.shared && matches.length > 1) {
-								field = matches[1]; // Use the second instance for substitute
-							} else {
-								field = matches[0] || form.getTextField(mapping.pdfName);
-							}
+							if (mapping.shared && matches.length > 1) field = matches[1]; 
+							else field = matches[0];
 						} else {
 							field = form.getDropdown(mapping.pdfName);
-							if (field) {
+						}
+
+						if (field) {
+							let matchedValue = value;
+							if (mapping.type === "dropdown") {
 								const options = field.getOptions();
 								const exactMatch = options.find((opt) => opt === value);
 								if (!exactMatch) {
 									const fuzzyMatch = options.find((opt) => opt.trim() === value.trim() || opt.includes(value) || value.includes(opt));
 									if (fuzzyMatch) matchedValue = fuzzyMatch;
 								}
-								field.clear(); 
-							}
-						}
-
-						if (field) {
-							if (mapping.type === "text") {
-								field.setText("");
-								field.acroField.dict.delete(PDFName.of("AA"));
 							}
 
 							const widgets = field.acroField.getWidgets();
 							for (const widget of widgets) {
-								if (mapping.type === "text") widget.dict.delete(PDFName.of("AA"));
 								const rect = widget.getRectangle();
-								
-								let size = 11;
-								const textWidth = arabicFont.widthOfTextAtSize(matchedValue, size);
-								if (textWidth > rect.width - 4) {
-									size = size * ((rect.width - 4) / textWidth);
-									if (size < 6) size = 6;
-								}
+								const pageRef = widget.dict.get(PDFName.of('P'));
+								let page = pdfDoc.getPages().find(p => p.ref === pageRef);
+								if (!page) page = pdfDoc.getPages()[0];
 
-								textDrawOperations.push({
-									text: matchedValue,
-									x: rect.x + 4,
-									y: rect.y + 5,
-									size: size
-								});
-								widget.dict.delete(PDFName.of("AP"));
+								const pngUrl = createTextPng(matchedValue, rect.width, rect.height);
+								const img = await pdfDoc.embedPng(pngUrl);
+								page.drawImage(img, { x: rect.x, y: rect.y, width: rect.width, height: rect.height });
 							}
 						}
-					} else if (mapping.type === "radio") {
-						const fieldsList = form.getFields();
-						const field = fieldsList.find((f) => f.getName() === mapping.pdfName);
-						if (field) {
-							const isYes = value === "نعم";
-							const selectedValue = isYes ? "Yes" : "no";
-							field.acroField.dict.set(PDFName.of("V"), PDFName.of(selectedValue));
-							const widgets = field.acroField.getWidgets();
-							for (const widget of widgets) {
-								const ap = widget.dict.get(PDFName.of("AP"));
-								if (ap) {
-									const normal = ap.get(PDFName.of("N"));
-									if (normal) {
-										const normalObj = normal instanceof PDFLib.PDFRef ? pdfDoc.context.lookup(normal) : normal;
-										const keys = normalObj.keys ? normalObj.keys() : [];
-										const hasSelected = keys.some((k) => k.toString() === `/${selectedValue}`);
-										widget.dict.set(PDFName.of("AS"), PDFName.of(hasSelected ? selectedValue : "Off"));
-									}
+					} else if (mapping.type === "yesno_checkboxes") {
+						const isYes = value === "نعم";
+						const yesField = form.getCheckBox("yes");
+						const noField = form.getCheckBox("no");
+						if (isYes) {
+							if (yesField) yesField.check();
+							if (noField) noField.uncheck();
+						} else {
+							if (yesField) yesField.uncheck();
+							if (noField) noField.check();
+						}
+					} else if (mapping.type === "signature") {
+						if (value) {
+							const img = await pdfDoc.embedPng(value);
+							const fieldsList = form.getFields();
+							const field = fieldsList.find((f) => f.getName() === mapping.pdfName);
+							if (field) {
+								const widgets = field.acroField.getWidgets();
+								for (const widget of widgets) {
+									const rect = widget.getRectangle();
+									const pages = pdfDoc.getPages();
+									pages[0].drawImage(img, {
+										x: rect.x,
+										y: rect.y,
+										width: rect.width,
+										height: rect.height
+									});
 								}
 							}
 						}
@@ -605,14 +719,12 @@ const { PDFDocument, PDFName, rgb } = PDFLib;
 				}
 			}
 
+			// Flatten the form to seal it and ensure it renders on all mobile viewers
 			form.flatten();
 
-			const pages = pdfDoc.getPages();
-			for (const op of textDrawOperations) {
-				pages[0].drawText(op.text, { x: op.x, y: op.y, size: op.size, font: arabicFont, color: rgb(0, 0, 0) });
-			}
+			// Save without generating appearances so pdf-lib doesn't throw encoding errors
+			const filledPdfBytes = await pdfDoc.save({ updateFieldAppearances: false });
 
-			const filledPdfBytes = await pdfDoc.save();
 			const blob = new Blob([filledPdfBytes], { type: "application/pdf" });
 
 			const employeeName = formData.fullName || "إجازة";
@@ -646,7 +758,6 @@ const { PDFDocument, PDFName, rgb } = PDFLib;
 				phoneNumber: "90001234",
 				fileNumber: "12345",
 				fileContract: "إيرادات متفرغ",
-				leaveDuration: "5",
 				leaveStartDate: "2026-05-15",
 				leaveEndDate: "2026-05-20",
 				assignedFridayPlan: true,
@@ -658,11 +769,8 @@ const { PDFDocument, PDFName, rgb } = PDFLib;
 				subNationality: "مصري",
 				subPhoneNumber: "60001234",
 				subAssignedWork: "الإمامة",
-				subAssignmentDuration: "5",
 				subStartDate: "2026-05-15",
-				subEndDate: "2026-05-20",
-				fridayPreacherName: "عمر خالد",
-				fridaySermonMosque: "مسجد الفرقان"
+				subEndDate: "2026-05-20"
 			};
 
 			for (const [id, value] of Object.entries(testData)) {
