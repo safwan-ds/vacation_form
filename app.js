@@ -142,19 +142,11 @@ const { PDFDocument, PDFName, PDFBool, rgb } = PDFLib;
 				groupDiv.appendChild(textarea);
 			} else if (field.type === "date") {
 				const input = document.createElement("input");
-				input.type = "text";
+				input.type = "date";
 				input.id = field.id;
 				input.name = field.id;
 				input.className = "form-control";
 				if (field.required) input.required = true;
-
-				input.addEventListener("focus", function () {
-					this.type = "date";
-					if (this.showPicker) this.showPicker();
-				});
-				input.addEventListener("blur", function () {
-					if (!this.value) this.type = "text";
-				});
 
 				groupDiv.appendChild(input);
 			} else if (field.type === "signature") {
@@ -183,11 +175,20 @@ const { PDFDocument, PDFName, PDFBool, rgb } = PDFLib;
 				
 				const resizeCanvas = () => {
 					const rect = canvas.getBoundingClientRect();
+					if (Math.abs(canvas.width - rect.width) < 1 && Math.abs(canvas.height - rect.height) < 1) return;
+					
+					const existingData = canvas.toDataURL();
 					canvas.width = rect.width;
 					canvas.height = rect.height;
 					ctx.strokeStyle = '#000000';
 					ctx.lineWidth = 2;
 					ctx.lineCap = 'round';
+					
+					if (existingData && existingData !== 'data:,') {
+						const img = new Image();
+						img.onload = () => ctx.drawImage(img, 0, 0);
+						img.src = existingData;
+					}
 				};
 				
 				setTimeout(resizeCanvas, 100);
