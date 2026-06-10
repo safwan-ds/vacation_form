@@ -162,6 +162,8 @@ document.addEventListener("DOMContentLoaded", () => {
 	const resetBtn = document.getElementById("reset-btn");
 
 	let parsedData = null;
+	let lastPdfBlob = null;
+	let lastPdfFileName = null;
 
 	// ── Enable/disable parse button based on input ──
 	jsonInput.addEventListener("input", () => {
@@ -461,24 +463,83 @@ document.addEventListener("DOMContentLoaded", () => {
 
 			const filledPdfBytes = await pdfDoc.save();
 			const blob = new Blob([filledPdfBytes], { type: "application/pdf" });
-			const url = URL.createObjectURL(blob);
 
-			const link = document.createElement("a");
-			link.href = url;
 			const employeeName = parsedData.fullName || "إجازة";
-			link.download = `إجازة - ${employeeName}.pdf`;
-			link.click();
+			const fileName = `إجازة - ${employeeName}.pdf`;
 
-			URL.revokeObjectURL(url);
+			// Store blob for Telegram sending
+			lastPdfBlob = blob;
+			lastPdfFileName = fileName;
 
-			// Show success
+			// Show success & reset Telegram state
 			loadingOverlay.classList.remove("show");
 			stepPreview.classList.remove("active");
 			successMessage.classList.add("show");
+			resetTelegramState();
 		} catch (err) {
 			loadingOverlay.classList.remove("show");
 			console.error("Error filling PDF:", err);
 			alert(`حدث خطأ أثناء تعبئة النموذج:\n${err.message}`);
+		}
+	});
+
+	// ── Telegram Send ──
+	const telegramSendBtn = document.getElementById("telegram-send-btn");
+	const telegramSending = document.getElementById("telegram-sending");
+	const telegramSent = document.getElementById("telegram-sent");
+	const telegramError = document.getElementById("telegram-error");
+	const telegramErrorText = document.getElementById("telegram-error-text");
+
+	function resetTelegramState() {
+		telegramSendBtn.disabled = false;
+		telegramSendBtn.querySelector("span").textContent = "إرسال عبر تيليجرام";
+		telegramSending.style.display = "none";
+		telegramSent.style.display = "none";
+		telegramError.style.display = "none";
+	}
+
+	async function sendToTelegram(blob, fileName) {
+		const { botToken, chatId } = TELEGRAM_CONFIG;
+
+		if (!botToken || botToken === "YOUR_BOT_TOKEN_HERE" || !chatId || chatId === "CHAT_ID_HERE") {
+			throw new Error("لم يتم تكوين إعدادات تيليجرام بعد");
+		}
+
+		const formData = new FormData();
+		formData.append("chat_id", chatId);
+		formData.append("document", blob, fileName);
+		formData.append("caption", `📄 ${fileName}`);
+
+		const response = await fetch(
+			`https://api.telegram.org/bot${botToken}/sendDocument`,
+			{ method: "POST", body: formData }
+		);
+
+		const result = await response.json();
+		if (!result.ok) {
+			throw new Error(result.description || "فشل إرسال الملف");
+		}
+		return result;
+	}
+
+	telegramSendBtn.addEventListener("click", async () => {
+		if (!lastPdfBlob) return;
+
+		telegramSendBtn.disabled = true;
+		telegramSending.style.display = "flex";
+		telegramSent.style.display = "none";
+		telegramError.style.display = "none";
+
+		try {
+			await sendToTelegram(lastPdfBlob, lastPdfFileName);
+			telegramSending.style.display = "none";
+			telegramSent.style.display = "flex";
+			telegramSendBtn.querySelector("span").textContent = "تم الإرسال ✓";
+		} catch (err) {
+			telegramSending.style.display = "none";
+			telegramError.style.display = "flex";
+			telegramErrorText.textContent = `فشل الإرسال: ${err.message}`;
+			telegramSendBtn.disabled = false;
 		}
 	});
 
@@ -488,6 +549,9 @@ document.addEventListener("DOMContentLoaded", () => {
 		jsonInput.value = "";
 		parseBtn.disabled = true;
 		parsedData = null;
+		lastPdfBlob = null;
+		lastPdfFileName = null;
 		stepPaste.classList.add("active");
+		resetTelegramState();
 	});
 });
