@@ -108,14 +108,38 @@
                 </div>
                 <h3>تم تحميل الملف بنجاح!</h3>
                 <p>تم تعبئة نموذج الإجازة وتحميله</p>
-                <button id="reset-btn" class="action-btn parse-btn">
-                    <i class="ph ph-arrow-counter-clockwise"></i>
-                    <span>تعبئة نموذج آخر</span>
-                </button>
+
+                <div class="success-actions">
+                    <button id="telegram-send-btn" class="action-btn telegram-btn">
+                        <i class="ph ph-telegram-logo"></i>
+                        <span>إرسال عبر تيليجرام</span>
+                    </button>
+
+                    <div id="telegram-status" class="telegram-status">
+                        <div id="telegram-sending" class="telegram-state" style="display:none">
+                            <div class="spinner-ring-sm"></div>
+                            <span>جاري الإرسال...</span>
+                        </div>
+                        <div id="telegram-sent" class="telegram-state telegram-success" style="display:none">
+                            <i class="ph ph-check-circle"></i>
+                            <span>تم الإرسال بنجاح!</span>
+                        </div>
+                        <div id="telegram-error" class="telegram-state telegram-error" style="display:none">
+                            <i class="ph ph-warning-circle"></i>
+                            <span id="telegram-error-text">فشل الإرسال</span>
+                        </div>
+                    </div>
+
+                    <button id="reset-btn" class="action-btn parse-btn">
+                        <i class="ph ph-arrow-counter-clockwise"></i>
+                        <span>تعبئة نموذج آخر</span>
+                    </button>
+                </div>
             </div>
         </main>
     </div>
 
+    <script src="telegram-config.js"></script>
     <script src="fill-pdf.js"></script>
 </body>
 
