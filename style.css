@@ -1,31 +1,33 @@
 :root {
-    /* Light Theme Colors */
-    --bg-color: #f3f4f6;
-    --text-color: #1f2937;
-    --text-muted: #6b7280;
+    /* Light Theme Colors (Islamic Theme) */
+    --bg-color: #fdfbf7; /* Warm parchment/ivory */
+    --text-color: #064e3b; /* Deep emerald text */
+    --text-muted: #4b5563;
     --card-bg: #ffffff;
-    --card-border: rgba(255, 255, 255, 0.5);
-    --input-bg: #f9fafb;
-    --input-border: #e5e7eb;
-    --input-focus: #10b981;
-    --primary-color: #10b981; /* WhatsApp Greenish */
-    --primary-hover: #059669;
-    --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+    --card-border: rgba(212, 175, 55, 0.2);
+    --input-bg: #ffffff;
+    --input-border: #d1d5db;
+    --input-focus: #d4af37; /* Gold focus */
+    --primary-color: #065f46; /* Emerald Green */
+    --primary-hover: #047857;
+    --accent-color: #d4af37; /* Warm Gold */
+    --shadow: 0 10px 25px -5px rgba(6, 78, 59, 0.08), 0 8px 10px -6px rgba(6, 78, 59, 0.04);
 }
 
 [data-theme="dark"] {
-    /* Dark Theme Colors */
-    --bg-color: #111827;
-    --text-color: #f9fafb;
+    /* Dark Theme Colors (Islamic Theme) */
+    --bg-color: #022c22; /* Night Green */
+    --text-color: #fdfbf7;
     --text-muted: #9ca3af;
-    --card-bg: #1f2937;
-    --card-border: rgba(255, 255, 255, 0.05);
-    --input-bg: #374151;
-    --input-border: #4b5563;
-    --input-focus: #10b981;
-    --primary-color: #10b981;
-    --primary-hover: #34d399;
-    --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
+    --card-bg: #064e3b;
+    --card-border: rgba(245, 158, 11, 0.2);
+    --input-bg: #022c22;
+    --input-border: #065f46;
+    --input-focus: #f59e0b; /* Amber/Gold */
+    --primary-color: #f59e0b; /* Gold in dark mode */
+    --primary-hover: #fbbf24;
+    --accent-color: #f59e0b;
+    --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
 }
 
 * {
@@ -37,6 +39,7 @@
 body {
     font-family: 'Cairo', sans-serif;
     background-color: var(--bg-color);
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23d4af37' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
     color: var(--text-color);
     display: flex;
     justify-content: center;
@@ -59,10 +62,11 @@ body {
 }
 
 .header-content h1 {
-    font-size: 2rem;
+    font-family: 'Amiri', serif;
+    font-size: 2.2rem;
     font-weight: 700;
     margin-bottom: 5px;
-    background: linear-gradient(135deg, var(--primary-color), #3b82f6);
+    background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
 }
@@ -191,7 +195,7 @@ a.theme-toggle {
 
 .form-control:focus {
     border-color: var(--input-focus);
-    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+    box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.3);
 }
 
 /* Hide number arrows */
@@ -367,14 +371,14 @@ textarea.form-control {
 }
 
 .send-btn {
-    background: linear-gradient(135deg, #2AABEE, #229ED9);
+    background: linear-gradient(135deg, var(--accent-color), #b49126);
     color: #fff;
-    box-shadow: 0 4px 15px rgba(42, 171, 238, 0.3);
+    box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3);
 }
 
 .send-btn:hover:not(:disabled) {
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(42, 171, 238, 0.45);
+    box-shadow: 0 6px 20px rgba(212, 175, 55, 0.45);
 }
 
 /* -- Preview Grid -- */
