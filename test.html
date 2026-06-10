@@ -17,6 +17,8 @@
     <!-- html2pdf -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <script src="https://unpkg.com/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 
@@ -50,7 +52,54 @@
         </main>
     </div>
 
+
+    <!-- Preview Modal -->
+    <div id="preview-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>معاينة البيانات</h2>
+                <button id="close-modal" class="close-btn"><i class="ph ph-x"></i></button>
+            </div>
+            <div class="modal-body" id="preview-container">
+            </div>
+            <div class="modal-footer">
+                <button id="cancel-btn" class="action-btn secondary-btn">رجوع للتعديل</button>
+                <button id="send-btn" class="action-btn send-btn">
+                    <i class="ph ph-paper-plane-right"></i>
+                    <span>إرسال</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading overlay -->
+    <div id="loading-overlay" class="loading-overlay">
+        <div class="loading-spinner">
+            <div class="spinner-ring"></div>
+            <p>جاري إنشاء الإجازة وإرسالها...</p>
+        </div>
+    </div>
+
+    <!-- Success message overlay -->
+    <div id="success-overlay" class="loading-overlay">
+        <div class="success-message show">
+            <div class="success-icon">
+                <i class="ph ph-check-circle"></i>
+            </div>
+            <h3>تم الإرسال بنجاح!</h3>
+            <p>تم تعبئة نموذج الإجازة وإرساله عبر تيليجرام</p>
+            <div class="success-actions">
+                <button id="reset-btn" class="action-btn parse-btn">
+                    <i class="ph ph-arrow-counter-clockwise"></i>
+                    <span>تعبئة نموذج آخر</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="telegram-config.js"></script>
     <script src="app.js"></script>
+
 </body>
 
 </html>
